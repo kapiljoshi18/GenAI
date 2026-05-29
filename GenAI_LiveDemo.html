@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gen-AI Architecture — Interactive Live Demo</title>
+<style>
+  :root{
+    --blue:#2563eb; --darkblue:#1a2f5a; --lightblue:#dbeafe;
+    --green:#16a34a; --lightgreen:#dcfce7;
+    --orange:#ea580c; --lightorange:#ffedd5;
+    --purple:#7c3aed; --lightpurple:#ede9fe;
+    --accent:#0ea5e9; --bg:#0b1120; --card:#111a2e;
+    --border:#1e293b; --text:#e2e8f0; --muted:#94a3b8;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Segoe UI',system-ui,sans-serif;
+    background:linear-gradient(135deg,#0b1120,#141e33);
+    color:var(--text);line-height:1.6;min-height:100vh;
+  }
+  header{
+    text-align:center;padding:50px 20px 30px;
+    background:radial-gradient(ellipse at top,rgba(37,99,235,.25),transparent 70%);
+  }
+  header h1{
+    font-size:clamp(28px,5vw,46px);
+    background:linear-gradient(90deg,#60a5fa,#a78bfa,#38bdf8);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    margin-bottom:10px;
+  }
+  header p{color:var(--muted);font-size:17px;max-width:640px;margin:0 auto}
+  .tags{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:20px}
+  .tag{padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;
+    border:1px solid var(--border);transition:.2s;background:var(--card)}
+  .tag:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.4)}
+
+  .container{max-width:1100px;margin:0 auto;padding:20px}
+  section{
+    background:var(--card);border:1px solid var(--border);
+    border-radius:16px;padding:28px;margin:26px 0;
+    box-shadow:0 10px 30px rgba(0,0,0,.3);
+    scroll-margin-top:20px;
+  }
+  .sec-head{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+  .badge{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;
+    font-size:22px;font-weight:700;color:#fff;flex-shrink:0}
+  h2{font-size:24px}
+  .sub{color:var(--muted);margin:6px 0 20px;font-size:15px}
+
+  .btn{
+    background:var(--blue);color:#fff;border:none;padding:10px 22px;
+    border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:.2s;
+  }
+  .btn:hover{filter:brightness(1.15);transform:translateY(-1px)}
+  .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .btn.green{background:var(--green)} .btn.orange{background:var(--orange)}
+  .btn.purple{background:var(--purple)}
+
+  .stage{
+    background:#0a1020;border:1px solid var(--border);border-radius:12px;
+    padding:20px;margin-top:16px;min-height:60px;
+  }
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:stretch}
+  .node{
+    flex:1;min-width:130px;background:#0f1830;border:2px solid var(--border);
+    border-radius:12px;padding:14px;text-align:center;transition:.35s;position:relative;
+  }
+  .node .ico{font-size:26px}
+  .node .lbl{font-weight:600;margin-top:6px;font-size:14px}
+  .node .desc{font-size:11px;color:var(--muted);margin-top:4px}
+  .node.active{border-color:var(--accent);box-shadow:0 0 22px rgba(14,165,233,.55);transform:scale(1.05);background:#13213f}
+  .node.done{border-color:var(--green);background:rgba(22,163,74,.12)}
+  .arrow{display:grid;place-items:center;color:var(--muted);font-size:24px;align-self:center}
+  @media(max-width:640px){.arrow{transform:rotate(90deg)}.row{flex-direction:column}}
+
+  .chip{display:inline-block;padding:4px 10px;margin:3px;border-radius:8px;font-size:12px;
+    background:#0f1830;border:1px solid var(--border);transition:.3s}
+  .chip.hit{background:var(--lightgreen);color:#064e1a;border-color:var(--green);font-weight:600}
+  .chip.dim{opacity:.35}
+
+  input[type=text]{
+    width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--border);
+    background:#0a1020;color:var(--text);font-size:14px;margin-bottom:10px;
+  }
+  .log{font-family:'Consolas',monospace;font-size:12.5px;white-space:pre-wrap;color:#9fd5ff}
+  .log .think{color:#fbbf24}.log .act{color:#60a5fa}.log .obs{color:#34d399}.log .ans{color:#f472b6;font-weight:600}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}.grid2 .sec2-only{display:block}}
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:13px}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--border)}
+  th{background:var(--darkblue);color:#fff}
+  tr:hover td{background:rgba(37,99,235,.08)}
+
+  .bar{height:8px;border-radius:6px;background:#0f1830;overflow:hidden;margin:4px 0}
+  .bar > div{height:100%;background:linear-gradient(90deg,var(--blue),var(--accent));width:0;transition:width .6s}
+
+  .token{display:inline-block;padding:2px 7px;margin:2px;border-radius:6px;background:#0f1830;
+    border:1px solid var(--border);font-family:monospace;font-size:12px;opacity:0;transform:translateY(6px);
+    transition:.3s}
+  .token.show{opacity:1;transform:none}
+  .token.next{background:var(--lightpurple);color:#3b0764;border-color:var(--purple);font-weight:700}
+
+  nav{position:sticky;top:0;z-index:50;background:rgba(11,17,32,.92);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px}
+  nav .inner{max-width:1100px;margin:0 auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+  nav a{color:var(--muted);text-decoration:none;font-size:13px;padding:6px 12px;border-radius:8px;transition:.2s}
+  nav a:hover{background:var(--card);color:#fff}
+
+  .vec{font-family:monospace;font-size:12px;color:var(--accent)}
+  .pulse{animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .flow-line{height:3px;background:linear-gradient(90deg,transparent,var(--accent),transparent);
+    margin:10px 0;opacity:0;transition:.5s}
+  .flow-line.on{opacity:1}
+  footer{text-align:center;color:var(--muted);padding:40px 20px;font-size:13px}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .dot{width:12px;height:12px;border-radius:50%}
+</style>
+</head>
+<body>
+
+<nav><div class="inner">
+  <a href="#llm">LLM</a>
+  <a href="#rag">RAG</a>
+  <a href="#vdb">Vector DB</a>
+  <a href="#mcp">MCP</a>
+  <a href="#agent">Agentic AI</a>
+  <a href="#n8n">n8n Flow</a>
+  <a href="#e2e">End-to-End</a>
+</div></nav>
+
+<header>
+  <h1>Gen-AI Architecture — Live Demo</h1>
+  <p>Click the buttons in each section to watch how every concept actually works. Visual, interactive, and self-contained.</p>
+  <div class="tags">
+    <span class="tag" style="border-color:#2563eb" onclick="go('llm')">LLM</span>
+    <span class="tag" style="border-color:#16a34a" onclick="go('rag')">RAG</span>
+    <span class="tag" style="border-color:#7c3aed" onclick="go('vdb')">Vector DB</span>
+    <span class="tag" style="border-color:#ea580c" onclick="go('mcp')">MCP</span>
+    <span class="tag" style="border-color:#a78bfa" onclick="go('agent')">Agentic AI</span>
+    <span class="tag" style="border-color:#f59e0b" onclick="go('n8n')">n8n</span>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- ============ LLM ============ -->
+<section id="llm">
+  <div class="sec-head">
+    <div class="badge" style="background:#2563eb">1</div>
+    <div><h2>Large Language Model (LLM)</h2></div>
+  </div>
+  <p class="sub">An LLM predicts the <b>next token</b> over and over. Click below to watch it generate text token-by-token.</p>
+  <input type="text" id="llmPrompt" value="The capital of France is">
+  <button class="btn" onclick="runLLM()">Generate ▶</button>
+  <div class="stage">
+    <div id="llmOut" style="font-size:15px;line-height:2.2"></div>
+    <div id="llmProbs" style="margin-top:14px"></div>
+  </div>
+  <p class="sub" style="margin-top:14px;margin-bottom:0">At each step the model ranks candidate tokens by probability and picks one. Everything — answers, code, reasoning — emerges from this loop.</p>
+</section>
+
+<!-- ============ Vector DB ============ -->
+<section id="vdb">
+  <div class="sec-head">
+    <div class="badge" style="background:#7c3aed">3</div>
+    <div><h2>Vector Database</h2></div>
+  </div>
+  <p class="sub">Text becomes a vector of numbers (an <b>embedding</b>). Similar meanings sit close together. Type a word and see its nearest neighbours by <i>meaning</i>, not spelling.</p>
+  <input type="text" id="vdbQuery" value="puppy">
+  <button class="btn purple" onclick="runVDB()">Embed &amp; Search ▶</button>
+  <div class="stage">
+    <div id="vdbEmbed" class="vec"></div>
+    <div id="vdbResults" style="margin-top:14px"></div>
+  </div>
+</section>
+
+<!-- ============ RAG ============ -->
+<section id="rag">
+  <div class="sec-head">
+    <div class="badge" style="background:#16a34a">2</div>
+    <div><h2>Retrieval-Augmented Generation (RAG)</h2></div>
+  </div>
+  <p class="sub">RAG <b>retrieves</b> relevant documents from the knowledge base, then feeds them to the LLM so the answer is grounded in real data. Ask a question about our mini knowledge base.</p>
+  <input type="text" id="ragQuery" value="What is the refund policy?">
+  <button class="btn green" onclick="runRAG()">Run RAG Pipeline ▶</button>
+  <div class="stage">
+    <div class="row" id="ragFlow">
+      <div class="node" data-step="0"><div class="ico">❓</div><div class="lbl">Query</div></div>
+      <div class="arrow">→</div>
+      <div class="node" data-step="1"><div class="ico">🔢</div><div class="lbl">Embed</div></div>
+      <div class="arrow">→</div>
+      <div class="node" data-step="2"><div class="ico">🗄️</div><div class="lbl">Vector DB</div></div>
+      <div class="arrow">→</div>
+      <div class="node" data-step="3"><div class="ico">📄</div><div class="lbl">Retrieve</div></div>
+      <div class="arrow">→</div>
+      <div class="node" data-step="4"><div class="ico">🧠</div><div class="lbl">LLM</div></div>
+    </div>
+    <div id="ragRetrieved" style="margin-top:16px"></div>
+    <div id="ragAnswer" class="log" style="margin-top:10px"></div>
+  </div>
+</section>
+
+<!-- ============ MCP ============ -->
+<section id="mcp">
+  <div class="sec-head">
+    <div class="badge" style="background:#ea580c">4</div>
+    <div><h2>Model Context Protocol (MCP)</h2></div>
+  </div>
+  <p class="sub">MCP is a standard wrapper so an agent can call <b>any</b> API the same way. Watch a tool call travel: Agent → MCP Client → MCP Server → real API → back.</p>
+  <button class="btn orange" onclick="runMCP()">Call GitHub Tool: create_issue() ▶</button>
+  <div class="stage">
+    <div class="row" id="mcpFlow">
+      <div class="node" data-step="0"><div class="ico">🤖</div><div class="lbl">Agent</div><div class="desc">decides tool</div></div>
+      <div class="arrow">→</div>
+      <div class="node" data-step="1"><div class="ico">🔌</div><div class="lbl">MCP Client</div><div class="desc">protocol</div></div>
+      <div class="arrow">→</div>
+      <div class="node" data-step="2"><div class="ico">🖥️</div><div class="lbl">MCP Server</div><div class="desc">GitHub wrapper</div></div>
+      <div class="arrow">→</div>
+      <div class="node" data-step="3"><div class="ico">🌐</div><div class="lbl">GitHub API</div><div class="desc">real service</div></div>
+    </div>
+    <div id="mcpLog" class="log" style="margin-top:16px"></div>
+  </div>
+</section>
+
+<!-- ============ Agentic AI ============ -->
+<section id="agent">
+  <div class="sec-head">
+    <div class="badge" style="background:#7c3aed">5</div>
+    <div><h2>Agentic AI — The Reason → Act → Observe Loop</h2></div>
+  </div>
+  <p class="sub">An agent doesn't answer in one shot. It <b>plans</b>, <b>acts</b> with tools, <b>observes</b> results, and loops until the goal is done. Watch the ReAct loop run.</p>
+  <input type="text" id="agentGoal" value="What's the weather in Mumbai and is it good for a run?">
+  <button class="btn purple" onclick="runAgent()">Run Agent Loop ▶</button>
+  <div class="stage">
+    <div class="row" style="margin-bottom:16px">
+      <div class="node" id="ag-plan"><div class="ico">📋</div><div class="lbl">Plan</div></div>
+      <div class="arrow">→</div>
+      <div class="node" id="ag-act"><div class="ico">⚡</div><div class="lbl">Act (Tool)</div></div>
+      <div class="arrow">→</div>
+      <div class="node" id="ag-obs"><div class="ico">👁️</div><div class="lbl">Observe</div></div>
+      <div class="arrow">↺</div>
+      <div class="node" id="ag-done"><div class="ico">✅</div><div class="lbl">Answer</div></div>
+    </div>
+    <div id="agentLog" class="log"></div>
+  </div>
+</section>
+
+<!-- ============ n8n ============ -->
+<section id="n8n">
+  <div class="sec-head">
+    <div class="badge" style="background:#f59e0b">6</div>
+    <div><h2>n8n — Visual Workflow Builder</h2></div>
+  </div>
+  <p class="sub">n8n wires triggers, the AI agent, memory, and tool nodes on a canvas. Run the workflow to see data flow node-to-node.</p>
+  <button class="btn" style="background:#f59e0b" onclick="runN8N()">Execute Workflow ▶</button>
+  <div class="stage">
+    <div class="row" id="n8nFlow">
+      <div class="node" data-step="0"><div class="ico">💬</div><div class="lbl">Chat Trigger</div></div>
+      <div class="arrow">→</div>
+      <div class="node" data-step="1"><div class="ico">🤖</div><div class="lbl">AI Agent</div></div>
+      <div class="arrow">→</div>
+      <div class="node" data-step="2"><div class="ico">🔍</div><div class="lbl">Search Tool</div></div>
+      <div class="arrow">→</div>
+      <div class="node" data-step="3"><div class="ico">📧</div><div class="lbl">Send Email</div></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div class="node" data-sub="model"><div class="ico">🧠</div><div class="lbl">Chat Model</div><div class="desc">Claude</div></div>
+      <div class="node" data-sub="mem"><div class="ico">💾</div><div class="lbl">Memory</div><div class="desc">buffer</div></div>
+    </div>
+    <div id="n8nLog" class="log" style="margin-top:16px"></div>
+  </div>
+</section>
+
+<!-- ============ End to End ============ -->
+<section id="e2e">
+  <div class="sec-head">
+    <div class="badge" style="background:linear-gradient(135deg,#2563eb,#7c3aed)">7</div>
+    <div><h2>End-to-End — Everything Working Together</h2></div>
+  </div>
+  <p class="sub">One goal flows through every layer: Trigger → Agent (LLM) → RAG + Vector DB + MCP tools → final answer. Press play.</p>
+  <input type="text" id="e2eGoal" value="Summarise today's AI news, file a Jira ticket, notify Slack">
+  <button class="btn" onclick="runE2E()">▶ Run Full System</button>
+  <div class="stage">
+    <div id="e2eStack"></div>
+    <div id="e2eLog" class="log" style="margin-top:14px"></div>
+  </div>
+  <div class="legend">
+    <span><span class="dot" style="background:#2563eb"></span>LLM / Agent</span>
+    <span><span class="dot" style="background:#16a34a"></span>RAG</span>
+    <span><span class="dot" style="background:#7c3aed"></span>Vector DB</span>
+    <span><span class="dot" style="background:#ea580c"></span>MCP / API</span>
+  </div>
+</section>
+
+<table>
+  <tr><th>Concept</th><th>What it is</th><th>Role in the system</th></tr>
+  <tr><td>LLM</td><td>Neural net trained on text</td><td>The brain — understands &amp; reasons</td></tr>
+  <tr><td>Agentic AI</td><td>LLM + loop + tools</td><td>Completes multi-step goals autonomously</td></tr>
+  <tr><td>RAG</td><td>Retrieve docs → feed to LLM</td><td>Gives the LLM private/fresh knowledge</td></tr>
+  <tr><td>Vector DB</td><td>Stores text as vectors</td><td>Enables semantic search for RAG</td></tr>
+  <tr><td>MCP</td><td>Standard API protocol</td><td>Connects agents to any external tool</td></tr>
+  <tr><td>n8n</td><td>Visual workflow builder</td><td>Wires all layers together visually</td></tr>
+</table>
+
+</div>
+
+<footer>Gen-AI Architecture · Interactive Live Demo · 2026 · Open this file in any browser — no install needed</footer>
+
+<script>
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+function go(id){document.getElementById(id).scrollIntoView({behavior:'smooth'});}
+
+/* ---------- 1. LLM ---------- */
+async function runLLM(){
+  const out=document.getElementById('llmOut');
+  const probs=document.getElementById('llmProbs');
+  const prompt=document.getElementById('llmPrompt').value.trim();
+  out.innerHTML=''; probs.innerHTML='';
+  const seqMap={
+    "the capital of france is":["Paris",".","It"," is"," home"," to"," the"," Eiffel"," Tower","."],
+    "default":["a"," large"," language"," model"," predicts"," the"," next"," token"," each"," step","."]
+  };
+  const key=prompt.toLowerCase();
+  const seq=seqMap[key]||seqMap.default;
+  // show prompt tokens
+  for(const w of prompt.split(' ')){
+    const t=document.createElement('span'); t.className='token show'; t.textContent=w;
+    out.appendChild(t);
+  }
+  for(const tok of seq){
+    // show candidate probabilities
+    const cands=[[tok.trim()||tok,0.71],[alt(tok),0.16],[alt2(tok),0.08],["…",0.05]];
+    probs.innerHTML='<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Next-token probabilities:</div>';
+    cands.forEach((c,i)=>{
+      const w=document.createElement('div');
+      w.style="display:flex;align-items:center;gap:10px;margin:3px 0;font-size:12px";
+      w.innerHTML=`<span style="width:70px;font-family:monospace;color:${i==0?'#a78bfa':'#94a3b8'}">${c[0]}</span>
+        <div class="bar" style="flex:1"><div style="width:${c[1]*100}%"></div></div>
+        <span style="width:38px;text-align:right">${(c[1]*100|0)}%</span>`;
+      probs.appendChild(w);
+    });
+    await sleep(550);
+    const t=document.createElement('span'); t.className='token next'; t.textContent=tok;
+    out.appendChild(t);
+    await sleep(120); t.className='token show';
+  }
+  probs.innerHTML='<div style="color:var(--green);font-size:13px">✓ Generation complete — picked highest-probability token each step.</div>';
+}
+function alt(t){const m={"Paris":"London","Eiffel":"Louvre"};return m[t.trim()]||"the";}
+function alt2(t){return "a";}
+
+/* ---------- 3. Vector DB ---------- */
+const VDB=[
+  {w:"puppy",  v:[.92,.12,.05]}, {w:"dog",   v:[.89,.15,.07]},
+  {w:"kitten", v:[.85,.20,.10]}, {w:"cat",   v:[.83,.22,.12]},
+  {w:"car",    v:[.10,.88,.30]}, {w:"truck", v:[.12,.90,.28]},
+  {w:"banana", v:[.20,.15,.92]}, {w:"apple", v:[.22,.18,.89]},
+];
+function embed(word){
+  // toy deterministic embedding
+  const seed=[...word].reduce((a,c)=>a+c.charCodeAt(0),0);
+  const known=VDB.find(x=>x.w===word.toLowerCase());
+  if(known) return known.v;
+  return [((seed*7)%100)/100,((seed*13)%100)/100,((seed*17)%100)/100];
+}
+function cos(a,b){let d=0,na=0,nb=0;for(let i=0;i<3;i++){d+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i];}return d/(Math.sqrt(na)*Math.sqrt(nb));}
+async function runVDB(){
+  const q=document.getElementById('vdbQuery').value.trim();
+  const e=document.getElementById('vdbEmbed');
+  const r=document.getElementById('vdbResults');
+  e.textContent=''; r.innerHTML='';
+  const vec=embed(q);
+  e.innerHTML=`"${q}"  →  embedding [`;
+  await sleep(300);
+  e.innerHTML=`"${q}"  →  <span class="pulse">computing…</span>`;
+  await sleep(700);
+  e.innerHTML=`"${q}"  →  [ ${vec.map(x=>x.toFixed(2)).join(', ')} ]  <span style="color:var(--muted)">(1536-dim in reality)</span>`;
+  await sleep(400);
+  const scored=VDB.filter(x=>x.w!==q.toLowerCase())
+    .map(x=>({w:x.w,s:cos(vec,x.v)})).sort((a,b)=>b.s-a.s);
+  r.innerHTML='<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Nearest neighbours by cosine similarity:</div>';
+  for(const it of scored){
+    const top=it.s>0.85;
+    const row=document.createElement('div');
+    row.style="display:flex;align-items:center;gap:10px;margin:4px 0;opacity:0;transition:.3s;font-size:13px";
+    row.innerHTML=`<span class="chip ${top?'hit':''}" style="width:80px">${it.w}</span>
+      <div class="bar" style="flex:1"><div style="width:${(it.s*100).toFixed(0)}%"></div></div>
+      <span style="width:46px;text-align:right;font-family:monospace">${it.s.toFixed(2)}</span>`;
+    r.appendChild(row); await sleep(150); row.style.opacity=1;
+  }
+}
+
+/* ---------- 2. RAG ---------- */
+const KB=[
+  {id:"DOC-1",text:"Refund policy: customers may request a full refund within 30 days of purchase.",tags:["refund","policy","30 days"]},
+  {id:"DOC-2",text:"Shipping is free for orders above $50 and takes 3-5 business days.",tags:["shipping","free","delivery"]},
+  {id:"DOC-3",text:"Our support team is available 24/7 via chat and email.",tags:["support","contact","help"]},
+  {id:"DOC-4",text:"To return an item, generate a label in your account under Orders.",tags:["return","label","orders"]},
+];
+async function runRAG(){
+  const q=document.getElementById('ragQuery').value.toLowerCase();
+  const nodes=[...document.querySelectorAll('#ragFlow .node')];
+  const ret=document.getElementById('ragRetrieved');
+  const ans=document.getElementById('ragAnswer');
+  nodes.forEach(n=>n.className='node'); ret.innerHTML=''; ans.innerHTML='';
+  for(let i=0;i<nodes.length;i++){
+    nodes[i].classList.add('active');
+    await sleep(650);
+    if(i===2){ // vector db search
+      const scored=KB.map(d=>({d,s:d.tags.reduce((a,t)=>a+(q.includes(t.split(' ')[0])?1:0),0)+ (q.split(' ').some(w=>d.text.toLowerCase().includes(w)&&w.length>3)?1:0)})).sort((a,b)=>b.s-a.s);
+      ret.innerHTML='<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Retrieved chunks (top-k):</div>';
+      const top=scored.slice(0,2);
+      for(const it of top){
+        const c=document.createElement('div');
+        c.className='chip hit'; c.style="display:block;margin:5px 0;padding:8px 12px;text-align:left";
+        c.innerHTML=`<b>${it.d.id}</b> — ${it.d.text}`;
+        ret.appendChild(c);
+      }
+      window._ragTop=top;
+    }
+    nodes[i].classList.remove('active'); nodes[i].classList.add('done');
+  }
+  await sleep(300);
+  const ctx=(window._ragTop||[])[0];
+  ans.innerHTML=`<span class="ans">LLM Answer (grounded in ${ctx?ctx.d.id:'KB'}):</span>\n`;
+  const reply=ctx? `Based on ${ctx.d.id}: ${ctx.d.text}` : "I couldn't find that in the knowledge base.";
+  await typeInto(ans,reply);
+}
+
+/* ---------- 4. MCP ---------- */
+async function runMCP(){
+  const nodes=[...document.querySelectorAll('#mcpFlow .node')];
+  const log=document.getElementById('mcpLog');
+  nodes.forEach(n=>n.className='node'); log.innerHTML='';
+  const msgs=[
+    ['act',"Agent: I should create a GitHub issue for this bug."],
+    ['act',"→ tool call: github_create_issue(title='Login bug', labels=['bug'])"],
+    ['think',"MCP Client: serialising request into MCP protocol JSON-RPC…"],
+    ['think',"MCP Server (github): received call, translating to REST…"],
+    ['act',"POST https://api.github.com/repos/acme/app/issues"],
+    ['obs',"GitHub API: 201 Created → issue #42"],
+    ['obs',"MCP Server → Client: { number: 42, url: '.../issues/42' }"],
+    ['ans',"Agent: Done. Created issue #42 ✅"]
+  ];
+  for(let i=0;i<nodes.length;i++){nodes[i].classList.add('active');await sleep(500);}
+  for(const [c,m] of msgs){
+    const line=document.createElement('div'); line.className=c; line.textContent=m;
+    log.appendChild(line); await sleep(500);
+  }
+  nodes.forEach(n=>n.classList.replace('active','done'));
+}
+
+/* ---------- 5. Agentic AI ---------- */
+async function runAgent(){
+  const log=document.getElementById('agentLog'); log.innerHTML='';
+  const P=document.getElementById('ag-plan'),A=document.getElementById('ag-act'),
+        O=document.getElementById('ag-obs'),D=document.getElementById('ag-done');
+  [P,A,O,D].forEach(n=>n.className='node');
+  const steps=[
+    [P,'think',"Thought: I need the weather in Mumbai, then judge if it's good for a run."],
+    [A,'act',"Action: call weather_tool(city='Mumbai')"],
+    [O,'obs',"Observation: Mumbai 29°C, humidity 78%, light rain."],
+    [P,'think',"Thought: High humidity + rain → not ideal. I have enough to answer."],
+    [D,'ans',"Answer: It's 29°C and rainy in Mumbai with 78% humidity — better to skip the run today. 🌧️"]
+  ];
+  for(const [node,cls,msg] of steps){
+    [P,A,O,D].forEach(n=>{if(n.classList.contains('active'))n.classList.replace('active','done')});
+    node.classList.add('active');
+    const line=document.createElement('div'); line.className=cls; log.appendChild(line);
+    await typeInto(line,msg); await sleep(350);
+  }
+  D.classList.replace('active','done');
+}
+
+/* ---------- 6. n8n ---------- */
+async function runN8N(){
+  const nodes=[...document.querySelectorAll('#n8nFlow .node')];
+  const subs=[...document.querySelectorAll('#n8n [data-sub]')];
+  const log=document.getElementById('n8nLog');
+  nodes.forEach(n=>n.className='node'); subs.forEach(n=>n.className='node'); log.innerHTML='';
+  const flow=[
+    ["💬 Chat Trigger fired: 'Find AI news and email me a summary'",[0]],
+    ["🤖 AI Agent activated (using Chat Model + Memory)",[1,'model','mem']],
+    ["🔍 Agent calls Search Tool → 5 articles found",[2]],
+    ["🧠 Chat Model summarises the articles",['model']],
+    ["📧 Send Email node → summary delivered to inbox ✅",[3]]
+  ];
+  for(const [msg,active] of flow){
+    nodes.forEach(n=>{if(n.classList.contains('active'))n.classList.replace('active','done')});
+    subs.forEach(n=>n.classList.remove('active'));
+    active.forEach(a=>{
+      if(typeof a==='number')nodes[a].classList.add('active');
+      else document.querySelector(`[data-sub="${a}"]`).classList.add('active');
+    });
+    const l=document.createElement('div'); l.className='act'; l.textContent=msg;
+    log.appendChild(l); await sleep(900);
+  }
+  nodes.forEach(n=>n.classList.replace('active','done'));
+}
+
+/* ---------- 7. End-to-End ---------- */
+async function runE2E(){
+  const stack=document.getElementById('e2eStack');
+  const log=document.getElementById('e2eLog');
+  stack.innerHTML=''; log.innerHTML='';
+  const layers=[
+    {t:"👤 USER GOAL",c:"#334155"},
+    {t:"💬 n8n Trigger Layer",c:"#b45309"},
+    {t:"🤖 Orchestrator Agent (LLM)",c:"#2563eb"},
+    {t:"🔍 MCP: Web Search → 5 articles",c:"#ea580c"},
+    {t:"🗄️ Vector DB: embed + store articles",c:"#7c3aed"},
+    {t:"📄 RAG: retrieve + LLM summarises",c:"#16a34a"},
+    {t:"🛠️ MCP: Jira create_issue() → DEV-201",c:"#ea580c"},
+    {t:"🛠️ MCP: Slack send_message(#ai)",c:"#ea580c"},
+    {t:"✅ FINAL RESPONSE TO USER",c:"#16a34a"},
+  ];
+  for(const L of layers){
+    const d=document.createElement('div');
+    d.style=`background:${L.c};color:#fff;padding:11px 16px;border-radius:10px;margin:6px 0;
+      font-weight:600;font-size:14px;opacity:0;transform:translateX(-12px);transition:.4s`;
+    d.textContent=L.t; stack.appendChild(d);
+    await sleep(120); d.style.opacity=1; d.style.transform='none';
+    await sleep(500);
+  }
+  const logs=[
+    ['act',"Plan: search → store → summarise → Jira → Slack"],
+    ['obs',"Web search returned 5 AI articles"],
+    ['obs',"Embedded + stored in Vector DB (5 vectors)"],
+    ['obs',"RAG retrieved top chunks; LLM wrote 200-word summary"],
+    ['obs',"Jira ticket DEV-201 created via MCP"],
+    ['obs',"Slack #ai-updates notified via MCP"],
+    ['ans',"Reply: 'Summary ready, DEV-201 filed, team notified ✅'"]
+  ];
+  for(const [c,m] of logs){
+    const l=document.createElement('div'); l.className=c; l.textContent="• "+m;
+    log.appendChild(l); await sleep(450);
+  }
+}
+
+/* ---------- helper: typing ---------- */
+async function typeInto(el,text){
+  for(let i=0;i<text.length;i++){el.textContent+=text[i];await sleep(12);}
+}
+
+/* auto-run LLM on load for a teaser */
+window.addEventListener('load',()=>setTimeout(runLLM,600));
+</script>
+</body>
+</html>
